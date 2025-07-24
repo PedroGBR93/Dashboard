@@ -131,3 +131,12 @@ header {
     opacity: 0.4;
     background: #fbeae5;
 }
+
+#report-content {
+    white-space: pre-wrap; /* Para respetar los saltos de línea y espacios */
+    max-height: 60vh;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+    padding: 1rem;
+    border-radius: 5px;
+}

@@ -19,6 +19,10 @@
                 <hr>
                 <h3>QVD (como CSV)</h3>
                 <input type="file" id="qvd-file-input" accept=".csv,.txt">
+                <hr>
+                <h3>Inteligencia Artificial</h3>
+                <button id="config-ia-btn">Configurar IA</button>
+                <button id="generate-report-btn">Generar Informe con IA</button>
             </div>
         </aside>
         <main id="dashboard">
@@ -47,6 +51,31 @@
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://www.gstatic.com/aiplatform/js/v1/aiplatform.js"></script>
     <script src="script.js"></script>
+
+    <!-- Modal de Configuración de IA -->
+    <div id="ia-config-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Configuración de IA (Gemini)</h2>
+            <form id="ia-config-form">
+                <label for="gemini-api-key">Clave de API de Gemini:</label>
+                <input type="password" id="gemini-api-key" name="gemini-api-key" required>
+                <label for="custom-prompt">Prompt Personalizado:</label>
+                <textarea id="custom-prompt" name="custom-prompt" rows="5" placeholder="Ej: Genera un resumen de los siguientes datos..."></textarea>
+                <button type="submit">Guardar Configuración</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Informe de IA -->
+    <div id="report-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Informe Generado por IA</h2>
+            <div id="report-content"></div>
+        </div>
+    </div>
 </body>
 </html>
