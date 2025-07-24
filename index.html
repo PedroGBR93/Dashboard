@@ -36,8 +36,8 @@
                     <option value="pie">Torta</option>
                     <option value="line">Línea</option>
                 </select>
-                <label for="spreadsheet-id">ID de Hoja de Cálculo:</label>
-                <input type="text" id="spreadsheet-id" name="spreadsheet-id" required>
+                <label for="spreadsheet-url">URL de Hoja de Cálculo:</label>
+                <input type="url" id="spreadsheet-url" name="spreadsheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." required>
                 <label for="sheet-range">Rango:</label>
                 <input type="text" id="sheet-range" name="sheet-range" placeholder="Hoja1!A1:B5" required>
                 <button type="submit">Crear Gráfico</button>
@@ -46,6 +46,7 @@
     </div>
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

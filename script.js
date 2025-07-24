@@ -54,13 +54,24 @@ window.addEventListener('click', (event) => {
 chartForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const chartType = event.target['chart-type'].value;
-    const spreadsheetId = event.target['spreadsheet-id'].value;
+    const spreadsheetUrl = event.target['spreadsheet-url'].value;
     const range = event.target['sheet-range'].value;
 
-    obtenerDatosDeSheet(spreadsheetId, range, chartType);
-    modal.style.display = 'none';
-    chartForm.reset();
+    const spreadsheetId = extractSpreadsheetIdFromUrl(spreadsheetUrl);
+
+    if (spreadsheetId) {
+        obtenerDatosDeSheet(spreadsheetId, range, chartType);
+        modal.style.display = 'none';
+        chartForm.reset();
+    } else {
+        alert('URL de Google Sheet no válida.');
+    }
 });
+
+function extractSpreadsheetIdFromUrl(url) {
+    const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : null;
+}
 
 function obtenerDatosDeSheet(spreadsheetId, range, chartType) {
     gapi.client.sheets.spreadsheets.values.get({
@@ -82,6 +93,15 @@ function obtenerDatosDeSheet(spreadsheetId, range, chartType) {
 function crearGrafico(data, chartType) {
     const chartContainer = document.createElement('div');
     chartContainer.classList.add('chart-container');
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.classList.add('delete-btn');
+    deleteBtn.innerHTML = '&times;';
+    deleteBtn.addEventListener('click', () => {
+        chartContainer.remove();
+    });
+    chartContainer.appendChild(deleteBtn);
+
     const canvas = document.createElement('canvas');
     chartContainer.appendChild(canvas);
     dashboard.appendChild(chartContainer);
@@ -135,4 +155,8 @@ function parseCSV(text) {
 
 window.onload = function() {
     handleClientLoad();
+    new Sortable(dashboard, {
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+    });
 }
