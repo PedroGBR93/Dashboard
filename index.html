@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Interactivo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <header>
+            <h1>Dashboard Interactivo</h1>
+        </header>
+        <aside id="sidebar">
+            <h2>Fuentes de Datos</h2>
+            <div id="data-sources">
+                <h3>Google Sheets</h3>
+                <button id="add-chart-btn">Agregar Gráfico de Sheet</button>
+                <hr>
+                <h3>QVD (como CSV)</h3>
+                <input type="file" id="qvd-file-input" accept=".csv,.txt">
+            </div>
+        </aside>
+        <main id="dashboard">
+            <!-- Los gráficos se agregarán aquí -->
+        </main>
+    </div>
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Configurar Gráfico</h2>
+            <form id="chart-form">
+                <label for="chart-type">Tipo de Gráfico:</label>
+                <select id="chart-type" name="chart-type">
+                    <option value="bar">Barras</option>
+                    <option value="pie">Torta</option>
+                    <option value="line">Línea</option>
+                </select>
+                <label for="spreadsheet-id">ID de Hoja de Cálculo:</label>
+                <input type="text" id="spreadsheet-id" name="spreadsheet-id" required>
+                <label for="sheet-range">Rango:</label>
+                <input type="text" id="sheet-range" name="sheet-range" placeholder="Hoja1!A1:B5" required>
+                <button type="submit">Crear Gráfico</button>
+            </form>
+        </div>
+    </div>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
