@@ -6,6 +6,7 @@
     <title>Dashboard Empresarial - Control de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -535,33 +536,33 @@
             .main-container {
                 padding: 10px;
             }
-            
+
             .header-content {
                 flex-direction: column;
                 gap: 15px;
                 text-align: center;
             }
-            
+
             .date-controls {
                 grid-template-columns: 1fr;
             }
-            
+
             .data-upload-section {
                 grid-template-columns: 1fr;
             }
-            
+
             .charts-dashboard {
                 grid-template-columns: 1fr;
             }
-            
+
             .action-buttons {
                 justify-content: center;
             }
-            
+
             .data-table {
                 font-size: 0.8rem;
             }
-            
+
             .data-table th,
             .data-table td {
                 padding: 10px 8px;
@@ -623,7 +624,7 @@
                     <input type="url" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/...">
                 </div>
             </div>
-            
+
             <div class="action-buttons">
                 <button class="btn btn-primary" onclick="loadGoogleSheet()">
                     <i class="fas fa-download"></i>
@@ -637,6 +638,10 @@
                 <button class="btn btn-secondary" onclick="exportData()">
                     <i class="fas fa-file-export"></i>
                     Exportar Datos
+                </button>
+                <button class="btn btn-primary" onclick="getAIInsights()">
+                    <i class="fas fa-robot"></i>
+                    Obtener Insights (IA)
                 </button>
             </div>
         </div>
@@ -726,15 +731,15 @@
             const statusContainer = document.getElementById('statusMessages');
             const statusElement = document.createElement('div');
             statusElement.className = `status-message status-${type}`;
-            
+
             const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
             statusElement.innerHTML = `
                 <i class="fas fa-${icon}"></i>
                 <span>${message}</span>
             `;
-            
+
             statusContainer.appendChild(statusElement);
-            
+
             setTimeout(() => {
                 statusElement.remove();
             }, 5000);
@@ -743,17 +748,17 @@
         // Inicializar drag and drop
         function initializeDragAndDrop() {
             const uploadAreas = document.querySelectorAll('.file-upload-area');
-            
+
             uploadAreas.forEach(area => {
                 area.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     area.classList.add('drag-over');
                 });
-                
+
                 area.addEventListener('dragleave', () => {
                     area.classList.remove('drag-over');
                 });
-                
+
                 area.addEventListener('drop', (e) => {
                     e.preventDefault();
                     area.classList.remove('drag-over');
@@ -763,6 +768,132 @@
                     }
                 });
             });
+        }
+
+        function addNewChart() {
+            if (!currentData || !currentData.data || currentData.data.length === 0) {
+                showStatus('Carga datos antes de añadir un gráfico.', 'info');
+                return;
+            }
+
+            chartCounter++;
+            const chartId = `chart-${chartCounter}`;
+            const chartsContainer = document.getElementById('chartsContainer');
+
+            const chartCard = document.createElement('div');
+            chartCard.className = 'chart-card';
+            chartCard.id = `chart-card-${chartId}`;
+            chartCard.innerHTML = `
+                <div class="chart-card-header">
+                    <h3 class="chart-title">
+                        <i class="fas fa-chart-pie"></i> Gráfico ${chartCounter}
+                    </h3>
+                    <div class="chart-options">
+                        <select id="chart-type-${chartId}" onchange="updateChart('${chartId}')">
+                            <option value="bar">Barras</option>
+                            <option value="line">Líneas</option>
+                            <option value="pie">Torta</option>
+                            <option value="doughnut">Rosquilla</option>
+                        </select>
+                        <button class="remove-chart-btn" onclick="removeChart('${chartId}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+            `;
+
+            chartsContainer.appendChild(chartCard);
+            createChart(chartId, 'bar');
+        }
+
+        function createChart(chartId, type) {
+            const ctx = document.getElementById(chartId).getContext('2d');
+            const labels = currentData.data.map(row => row[currentData.columns[0]]);
+            const numericColumn = currentData.columns.find((col, i) => i > 0 && typeof currentData.data[0][col] === 'number');
+            const data = currentData.data.map(row => row[numericColumn]);
+
+            const chart = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: numericColumn,
+                        data: data,
+                        backgroundColor: 'rgba(220, 38, 38, 0.6)',
+                        borderColor: 'rgba(220, 38, 38, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            charts.push({ id: chartId, chart: chart });
+        }
+
+        function updateChart(chartId) {
+            const chartType = document.getElementById(`chart-type-${chartId}`).value;
+            const chartIndex = charts.findIndex(c => c.id === chartId);
+            if (chartIndex > -1) {
+                charts[chartIndex].chart.destroy();
+                charts.splice(chartIndex, 1);
+                createChart(chartId, chartType);
+            }
+        }
+
+        function removeChart(chartId) {
+            const chartCard = document.getElementById(`chart-card-${chartId}`);
+            if (chartCard) {
+                chartCard.remove();
+            }
+            const chartIndex = charts.findIndex(c => c.id === chartId);
+            if (chartIndex > -1) {
+                charts[chartIndex].chart.destroy();
+                charts.splice(chartIndex, 1);
+            }
+        }
+
+        function displayDataMatrix() {
+            const dataMatrix = document.getElementById('dataMatrix');
+            const table = document.getElementById('mainDataTable');
+            const matrixTitle = document.getElementById('matrixTitle');
+
+            if (!currentData || !currentData.data || currentData.data.length === 0) {
+                dataMatrix.style.display = 'none';
+                return;
+            }
+
+            matrixTitle.textContent = `Matriz de Datos (${currentData.source})`;
+            table.innerHTML = ''; // Limpiar tabla
+
+            // Crear encabezado
+            const thead = document.createElement('thead');
+            let headerRow = '<tr>';
+            currentData.columns.forEach(col => {
+                headerRow += `<th>${col}</th>`;
+            });
+            headerRow += '</tr>';
+            thead.innerHTML = headerRow;
+            table.appendChild(thead);
+
+            // Crear cuerpo de la tabla
+            const tbody = document.createElement('tbody');
+            currentData.data.forEach(row => {
+                let tableRow = '<tr>';
+                currentData.columns.forEach(col => {
+                    tableRow += `<td>${row[col]}</td>`;
+                });
+                tableRow += '</tr>';
+                tbody.innerHTML += tableRow;
+            });
+            table.appendChild(tbody);
+
+            dataMatrix.style.display = 'block';
         }
 
         // Cargar datos de ejemplo
@@ -790,14 +921,14 @@
         async function loadGoogleSheet() {
             const url = document.getElementById('sheetUrl').value;
             const loadingIndicator = document.getElementById('loadingIndicator');
-            
+
             if (!url) {
                 showStatus('Por favor ingresa una URL válida de Google Sheet', 'error');
                 return;
             }
 
             loadingIndicator.innerHTML = '<span class="loading"></span>';
-            
+
             try {
                 // Convertir URL de Google Sheet a formato CSV
                 let csvUrl = url;
@@ -808,7 +939,7 @@
 
                 // Nota: En un entorno real, necesitarías un proxy o configuración CORS
                 showStatus('Simulando carga de Google Sheet...', 'info');
-                
+
                 // Simular carga exitosa con datos de ejemplo ampliados
                 setTimeout(() => {
                     const expandedData = [
@@ -830,10 +961,111 @@
                     showStatus('Google Sheet cargado exitosamente', 'success');
                     loadingIndicator.innerHTML = '';
                 }, 2000);
-                
+
             } catch (error) {
                 showStatus(`Error al cargar Google Sheet: ${error.message}`, 'error');
                 loadingIndicator.innerHTML = '';
+            }
+        }
+
+        function parseCSVData(csvContent, fileName) {
+            Papa.parse(csvContent, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    if (results.errors.length) {
+                        showStatus(`Errores al parsear CSV: ${results.errors.map(e => e.message).join(', ')}`, 'error');
+                        return;
+                    }
+                    currentData = {
+                        data: results.data,
+                        columns: results.meta.fields,
+                        source: fileName
+                    };
+                    displayDataMatrix();
+                    showStatus(`Archivo CSV "${fileName}" cargado exitosamente`, 'success');
+                }
+            });
+        }
+
+        function parseExcelData(excelContent, fileName) {
+            try {
+                const workbook = XLSX.read(excelContent, { type: 'buffer' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                currentData = {
+                    data: jsonData,
+                    columns: Object.keys(jsonData[0]),
+                    source: fileName
+                };
+                displayDataMatrix();
+                showStatus(`Archivo Excel "${fileName}" cargado exitosamente`, 'success');
+            } catch (error) {
+                showStatus(`Error al procesar archivo Excel: ${error.message}`, 'error');
+            }
+        }
+
+        function getAIInsights() {
+            if (!currentData || !currentData.data || currentData.data.length === 0) {
+                showStatus('No hay datos para analizar.', 'info');
+                return;
+            }
+
+            const numericColumns = currentData.columns.filter(col =>
+                currentData.data.every(row => typeof row[col] === 'number')
+            );
+
+            if (numericColumns.length === 0) {
+                showStatus('No se encontraron columnas numéricas para analizar.', 'info');
+                return;
+            }
+
+            let maxSum = -Infinity;
+            let maxSumCol = null;
+
+            for (const col of numericColumns) {
+                const sum = currentData.data.reduce((acc, row) => acc + row[col], 0);
+                if (sum > maxSum) {
+                    maxSum = sum;
+                    maxSumCol = col;
+                }
+            }
+
+            if (maxSumCol) {
+                showStatus(`Insight de IA: La columna con la suma más alta es "${maxSumCol}" con un total de ${maxSum.toLocaleString()}.`, 'success');
+            } else {
+                showStatus('No se pudieron generar insights de los datos actuales.', 'info');
+            }
+        }
+
+        async function parseQVDData(file) {
+            const formData = new FormData();
+            formData.append('qvdfile', file);
+
+            try {
+                const response = await fetch('http://localhost:3000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                currentData = {
+                    data: data.data,
+                    columns: data.columns,
+                    source: file.name
+                };
+                displayDataMatrix();
+                showStatus(`Archivo QVD "${file.name}" cargado exitosamente`, 'success');
+
+            } catch (error) {
+                showStatus(`Error al procesar archivo QVD: ${error.message}`, 'error');
             }
         }
 
@@ -843,13 +1075,28 @@
             if (!file) return;
 
             const reader = new FileReader();
+            const fileType = file.name.split('.').pop().toLowerCase();
+
             reader.onload = function(e) {
                 const content = e.target.result;
-                
-                if (file.name.toLowerCase().endsWith('.qvd')) {
-                    parseQVDData(content, file.name);
-                } else if (file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
-                    showStatus('Procesando archivo Excel...', 'info');
-                    // Aquí implementarías el procesamiento de Excel
-                    showStatus('Archivo Excel procesado (funcionalidad en desarrollo)', 'info');
+
+                if (fileType === 'csv' || fileType === 'txt') {
+                    parseCSVData(content, file.name);
+                } else if (fileType === 'xlsx' || fileType === 'xls') {
+                    parseExcelData(e.target.result, file.name);
+                } else if (fileType === 'qvd') {
+                    parseQVDData(file);
                 } else {
+                    showStatus(`Formato de archivo no soportado: ${fileType}`, 'error');
+                }
+            };
+
+            if (fileType === 'xlsx' || fileType === 'xls') {
+                reader.readAsArrayBuffer(file);
+            } else if (fileType !== 'qvd') {
+                reader.readAsText(file);
+            }
+        }
+    </script>
+</body>
+</html>
