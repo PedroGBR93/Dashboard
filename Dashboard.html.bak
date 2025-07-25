@@ -444,13 +444,6 @@
             position: relative;
             height: 300px;
             width: 100%;
-            resize: both;
-            overflow: auto;
-        }
-
-        .chart-card {
-            resize: both;
-            overflow: auto;
         }
 
         /* Mensajes de estado */
@@ -711,48 +704,9 @@
     <div class="status-messages" id="statusMessages"></div>
 
     <!-- Botón flotante -->
-    <button class="floating-add-btn" onclick="openNewChartModal()" title="Agregar nuevo gráfico">
+    <button class="floating-add-btn" onclick="addNewChart()" title="Agregar nuevo gráfico">
         <i class="fas fa-plus"></i>
     </button>
-
-    <!-- Modal para nuevo gráfico -->
-    <div id="newChartModal" style="display:none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-        <div style="background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 15px;">
-            <h2>Agregar Nuevo Gráfico</h2>
-            <div class="form-group">
-                <label for="chartDataSourceUrl">URL Google Sheet:</label>
-                <input type="url" id="chartDataSourceUrl" placeholder="https://docs.google.com/spreadsheets/...">
-            </div>
-            <div class="form-group">
-                <label for="chartDataSourceFile">O subir archivo:</label>
-                <input type="file" id="chartDataSourceFile" accept=".csv,.qvd,.txt,.xlsx,.xls">
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="addNewChartFromModal()">Agregar Gráfico</button>
-                <button class="btn btn-secondary" onclick="closeNewChartModal()">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal para configurar gráfico -->
-    <div id="configChartModal" style="display:none; position: fixed; z-index: 1002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-        <div style="background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 15px;">
-            <h2>Configurar Gráfico</h2>
-            <input type="hidden" id="configChartId">
-            <div class="form-group">
-                <label for="labelColumn">Columna de Etiquetas:</label>
-                <select id="labelColumn"></select>
-            </div>
-            <div class="form-group">
-                <label for="dataColumn">Columna de Datos:</label>
-                <select id="dataColumn"></select>
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="updateChartConfig()">Actualizar Gráfico</button>
-                <button class="btn btn-secondary" onclick="closeChartConfigModal()">Cancelar</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Variables globales
@@ -766,226 +720,6 @@
             showStatus('Sistema iniciado correctamente', 'success');
             loadSampleData(); // Cargar datos de ejemplo
         });
-
-        function openNewChartModal() {
-            document.getElementById('newChartModal').style.display = 'block';
-        }
-
-        function closeNewChartModal() {
-            document.getElementById('newChartModal').style.display = 'none';
-        }
-
-        function openChartConfigModal(chartId) {
-            const chartInfo = charts.find(c => c.id === chartId);
-            if (!chartInfo) return;
-
-            const { data } = chartInfo;
-            const columns = Object.keys(data[0]);
-
-            const labelColumnSelector = document.getElementById('labelColumn');
-            const dataColumnSelector = document.getElementById('dataColumn');
-            labelColumnSelector.innerHTML = '';
-            dataColumnSelector.innerHTML = '';
-
-            columns.forEach(column => {
-                const option1 = document.createElement('option');
-                option1.value = column;
-                option1.textContent = column;
-                labelColumnSelector.appendChild(option1);
-
-                const option2 = document.createElement('option');
-                option2.value = column;
-                option2.textContent = column;
-                dataColumnSelector.appendChild(option2);
-            });
-
-            document.getElementById('configChartId').value = chartId;
-            document.getElementById('configChartModal').style.display = 'block';
-        }
-
-        function closeChartConfigModal() {
-            document.getElementById('configChartModal').style.display = 'none';
-        }
-
-        function updateChartConfig() {
-            const chartId = document.getElementById('configChartId').value;
-            const labelColumn = document.getElementById('labelColumn').value;
-            const dataColumn = document.getElementById('dataColumn').value;
-
-            const chartInfo = charts.find(c => c.id === chartId);
-            if (!chartInfo) return;
-
-            const { chart, data } = chartInfo;
-
-            chart.data.labels = data.map(row => row[labelColumn]);
-            chart.data.datasets[0].data = data.map(row => parseFloat(row[dataColumn]));
-            chart.update();
-
-            closeChartConfigModal();
-        }
-
-        function addNewChartFromModal() {
-            const urlInput = document.getElementById('chartDataSourceUrl');
-            const fileInput = document.getElementById('chartDataSourceFile');
-            let dataSource = null;
-
-            if (urlInput.value) {
-                dataSource = { type: 'url', value: urlInput.value };
-            } else if (fileInput.files.length > 0) {
-                dataSource = { type: 'file', value: fileInput.files[0] };
-            } else {
-                showStatus('Por favor, ingrese una URL o seleccione un archivo.', 'error');
-                return;
-            }
-
-            addNewChart(dataSource);
-            closeNewChartModal();
-        }
-
-        async function addNewChart(dataSource) {
-            chartCounter++;
-            const chartId = `chart-${chartCounter}`;
-
-            const chartCard = document.createElement('div');
-            chartCard.className = 'chart-card';
-            chartCard.id = chartId;
-
-            chartCard.innerHTML = `
-                <div class="chart-card-header">
-                    <h3 class="chart-title">
-                        <i class="fas fa-chart-pie"></i>
-                        Gráfico ${chartCounter}
-                    </h3>
-                    <div class="chart-options">
-                        <select onchange="changeChartType('${chartId}', this.value)">
-                            <option value="bar">Barras</option>
-                            <option value="line">Líneas</option>
-                            <option value="pie">Torta</option>
-                        </select>
-                        <button class="remove-chart-btn" onclick="removeChart('${chartId}')">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="openChartConfigModal('${chartId}')">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="chart-canvas-wrapper">
-                    <canvas></canvas>
-                </div>
-            `;
-
-            document.getElementById('chartsContainer').appendChild(chartCard);
-
-            let chartData;
-            if (dataSource.type === 'url') {
-                try {
-                    let csvUrl = dataSource.value;
-                    if (csvUrl.includes('spreadsheets/d/')) {
-                        const sheetId = csvUrl.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)[1];
-                        csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-                    }
-                    const response = await fetch(csvUrl);
-                    const text = await response.text();
-                    chartData = Papa.parse(text, { header: true }).data;
-                } catch (error) {
-                    showStatus(`Error al cargar datos desde la URL: ${error.message}`, 'error');
-                    return;
-                }
-            } else { // 'file'
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const content = e.target.result;
-                    if (dataSource.value.name.toLowerCase().endsWith('.csv') || dataSource.value.name.toLowerCase().endsWith('.txt')) {
-                        chartData = Papa.parse(content, { header: true }).data;
-                    } else {
-                        showStatus('Formato de archivo no soportado para gráficos.', 'error');
-                        return;
-                    }
-                    renderChart(chartId, chartData);
-                };
-                reader.readAsText(dataSource.value);
-                return; // renderChart will be called from onload
-            }
-
-            renderChart(chartId, chartData);
-        }
-
-        function renderChart(chartId, data) {
-            const chartCard = document.getElementById(chartId);
-            const canvas = chartCard.querySelector('canvas');
-            const ctx = canvas.getContext('2d');
-
-            const labels = data.map(row => row[Object.keys(row)[0]]);
-            const values = data.map(row => parseFloat(row[Object.keys(row)[1]]));
-
-            const newChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Datos del Gráfico',
-                        data: values,
-                        backgroundColor: 'rgba(220, 38, 38, 0.6)',
-                        borderColor: 'rgba(220, 38, 38, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value, index, values) {
-                                    if (value >= 0 && value <= 1) {
-                                        return value.toLocaleString(undefined, {style: 'percent'});
-                                    }
-                                    return value;
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        if (context.parsed.y >= 0 && context.parsed.y <= 1) {
-                                            label += context.parsed.y.toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2});
-                                        } else {
-                                            label += context.parsed.y;
-                                        }
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            const chartWrapper = chartCard.querySelector('.chart-canvas-wrapper');
-            charts.push({
-                id: chartId,
-                chart: newChart,
-                data: data,
-                dataSource: null, // Will be added later
-                wrapper: chartWrapper
-            });
-
-            new ResizeObserver(entries => {
-                for (let entry of entries) {
-                    newChart.resize();
-                }
-            }).observe(chartWrapper);
-        }
-
 
         // Función para mostrar mensajes de estado
         function showStatus(message, type = 'info') {
@@ -1114,9 +848,8 @@
 
                 if (file.name.toLowerCase().endsWith('.qvd')) {
                     parseQVDData(content, file.name);
-.                } else if (file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
+                } else if (file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
                     showStatus('Procesando archivo Excel...', 'info');
                     // Aquí implementarías el procesamiento de Excel
                     showStatus('Archivo Excel procesado (funcionalidad en desarrollo)', 'info');
                 } else {
-[end of Dashboard.html]
