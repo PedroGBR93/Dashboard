@@ -6,6 +6,9 @@
     <title>Dashboard Empresarial - Control de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -645,6 +648,10 @@
                     <i class="fas fa-file-export"></i>
                     Exportar Datos
                 </button>
+                <button class="btn btn-primary" onclick="generateReport()">
+                    <i class="fas fa-file-pdf"></i>
+                    Generar Reporte
+                </button>
             </div>
         </div>
 
@@ -749,10 +756,24 @@
             </div>
             <div class="action-buttons">
                 <button class="btn btn-primary" onclick="updateChartConfig()">Actualizar Gráfico</button>
+                <button class="btn btn-secondary" onclick="openFilterModal()">Filtro</button>
                 <button class="btn btn-secondary" onclick="closeChartConfigModal()">Cancelar</button>
             </div>
         </div>
     </div>
+
+    <!-- Modal para configurar filtros -->
+    <div id="filterModal" style="display:none; position: fixed; z-index: 1003; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+        <div style="background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: 15px;">
+            <h2>Configurar Filtros</h2>
+            <div id="filter-container"></div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="applyFilters()">Aplicar Filtros</button>
+                <button class="btn btn-secondary" onclick="closeFilterModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // Variables globales
@@ -805,6 +826,66 @@
 
         function closeChartConfigModal() {
             document.getElementById('configChartModal').style.display = 'none';
+        }
+
+        function openFilterModal() {
+            const chartId = document.getElementById('configChartId').value;
+            const chartInfo = charts.find(c => c.id === chartId);
+            if (!chartInfo) return;
+
+            const { data } = chartInfo;
+            const columns = Object.keys(data[0]);
+            const filterContainer = document.getElementById('filter-container');
+            filterContainer.innerHTML = '';
+
+            columns.forEach(column => {
+                const filterGroup = document.createElement('div');
+                filterGroup.className = 'form-group';
+                const label = document.createElement('label');
+                label.textContent = `Filtro para "${column}":`;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `filter-${column}`;
+                input.placeholder = `Valor para ${column}`;
+                filterGroup.appendChild(label);
+                filterGroup.appendChild(input);
+                filterContainer.appendChild(filterGroup);
+            });
+
+            document.getElementById('filterModal').style.display = 'block';
+        }
+
+        function closeFilterModal() {
+            document.getElementById('filterModal').style.display = 'none';
+        }
+
+        function applyFilters() {
+            const chartId = document.getElementById('configChartId').value;
+            const chartInfo = charts.find(c => c.id === chartId);
+            if (!chartInfo) return;
+
+            const { data } = chartInfo;
+            let filteredData = [...data];
+
+            const columns = Object.keys(data[0]);
+            columns.forEach(column => {
+                const filterValue = document.getElementById(`filter-${column}`).value;
+                if (filterValue) {
+                    filteredData = filteredData.filter(row => {
+                        return row[column].toString().toLowerCase().includes(filterValue.toLowerCase());
+                    });
+                }
+            });
+
+            const labelColumn = document.getElementById('labelColumn').value;
+            const dataColumn = document.getElementById('dataColumn').value;
+
+            chartInfo.chart.data.labels = filteredData.map(row => row[labelColumn]);
+            chartInfo.chart.data.datasets[0].data = filteredData.map(row => parseFloat(row[dataColumn]));
+            chartInfo.chart.update();
+
+            closeFilterModal();
+            closeChartConfigModal();
         }
 
         function updateChartConfig() {
@@ -898,13 +979,22 @@
                     const content = e.target.result;
                     if (dataSource.value.name.toLowerCase().endsWith('.csv') || dataSource.value.name.toLowerCase().endsWith('.txt')) {
                         chartData = Papa.parse(content, { header: true }).data;
+                    } else if (dataSource.value.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
+                        const workbook = XLSX.read(content, { type: 'binary' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        chartData = XLSX.utils.sheet_to_json(worksheet);
                     } else {
                         showStatus('Formato de archivo no soportado para gráficos.', 'error');
                         return;
                     }
                     renderChart(chartId, chartData);
                 };
-                reader.readAsText(dataSource.value);
+                if (dataSource.value.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
+                    reader.readAsBinaryString(dataSource.value);
+                } else {
+                    reader.readAsText(dataSource.value);
+                }
                 return; // renderChart will be called from onload
             }
 
@@ -1104,6 +1194,36 @@
         }
 
         // Manejar carga de archivos
+        async function generateReport() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 10;
+
+            for (let i = 0; i < charts.length; i++) {
+                const chartInfo = charts[i];
+                const canvas = chartInfo.chart.canvas;
+                const chartTitle = chartInfo.chart.options.plugins.title.text;
+
+                doc.text(chartTitle, 10, y);
+                y += 10;
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgProps = doc.getImageProperties(imgData);
+                const pdfWidth = doc.internal.pageSize.getWidth() - 20;
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                if (y + pdfHeight > doc.internal.pageSize.getHeight() - 10) {
+                    doc.addPage();
+                    y = 10;
+                }
+
+                doc.addImage(imgData, 'PNG', 10, y, pdfWidth, pdfHeight);
+                y += pdfHeight + 10;
+            }
+
+            doc.save('dashboard-report.pdf');
+        }
+
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
